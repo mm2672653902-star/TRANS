@@ -70,6 +70,9 @@ check('buildPrintHTML modes', () => {
   const s = { startedAt: Date.now(), srcLang: 'en', tgtLang: 'zh-CN', items: [{ src: 'Hello world.', tgt: '你好，世界。' }, { src: 'Second <b>line</b>.', tgt: '第二行。' }] };
   const bi = app.buildPrintHTML(s, 'bilingual');
   assert.ok(bi.includes('你好，世界。') && bi.includes('Hello world.'));
+  // Bilingual PDF order: translation (Chinese) first, large; original below, smaller.
+  assert.ok(bi.indexOf('你好，世界。') < bi.indexOf('Hello world.'), 'bilingual PDF must show translation before original');
+  assert.ok(bi.includes('pt big') && bi.includes('ps small'), 'bilingual PDF must use big-translation / small-original classes');
   assert.ok(!bi.includes('<b>line</b>'), 'must escape user text');
   assert.ok(bi.includes('Noto Sans SC') && bi.includes('@page'));
   const src = app.buildPrintHTML(s, 'src');

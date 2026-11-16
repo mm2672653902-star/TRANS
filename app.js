@@ -130,7 +130,7 @@ function buildPrintHTML(session, mode) {
     var n = String(i + 1).padStart(2, '0');
     if (mode === 'src') return '<div class="pi"><div class="pn">' + n + '</div><p class="ps">' + esc(it.src) + '</p></div>';
     if (mode === 'tgt') return '<div class="pi"><div class="pn">' + n + '</div><p class="pt">' + esc(it.tgt || '') + '</p></div>';
-    return '<div class="pi"><div class="pn">' + n + '</div><p class="ps">' + esc(it.src) + '</p><p class="pt">' + esc(it.tgt || '') + '</p></div>';
+    return '<div class="pi"><div class="pn">' + n + '</div><p class="pt big">' + esc(it.tgt || '') + '</p><p class="ps small">' + esc(it.src) + '</p></div>';
   }).join('');
   return '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>TRANS — ' + esc(title) + '</title>' +
     '<style>@page{size:A4;margin:22mm 20mm}body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;color:#141414;line-height:1.65;margin:0}' +
@@ -140,6 +140,7 @@ function buildPrintHTML(session, mode) {
     '.pi{padding:20px 0;border-bottom:1px solid #e3ded4;break-inside:avoid}' +
     '.pn{font-size:11px;letter-spacing:.16em;color:#b8b2a6}' +
     '.ps{font-size:15px;font-weight:600;margin:8px 0 4px}.pt{font-size:15px;color:#4a463f;margin:4px 0}' +
+    '.pt.big{font-size:19px;font-weight:700;color:#141414}.ps.small{font-size:14px;font-weight:400;color:#8a857c}' +
     '.foot{color:#b8b2a6;font-size:11px;margin-top:22px}</style></head><body>' +
     '<div class="head"><div class="brand">TRANS<span>.</span></div><h1>' + esc(title) + '</h1>' +
     '<div class="meta">' + esc(date) + ' · ' + esc(srcName) + ' → ' + esc(tgtName) + ' · 共 ' + (session.items || []).length + ' 句</div></div>' +
