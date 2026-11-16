@@ -1,0 +1,164 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>TRANS — 同声传译</title>
+<meta name="description" content="TRANS: self-use live translator. Deepgram streaming STT + Groq fast translation. No server. Keys stay on your device.">
+<link rel="icon" type="image/svg+xml" href="assets/icon.svg">
+<link rel="apple-touch-icon" href="assets/icon-512.png">
+<link rel="manifest" href="manifest.webmanifest">
+<!-- No Google Fonts: fonts.googleapis.com is blocked without a VPN in China.
+     System font stack (in styles.css) + on-device Noto Sans SC is used instead. -->
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<header class="topbar">
+  <div class="wrap topbar-in">
+    <div class="mode-seg" role="tablist" aria-label="模式">
+      <button id="mode-dialogue" class="seg" type="button" role="tab" aria-selected="false">对话</button>
+      <button id="mode-lecture" class="seg active" type="button" role="tab" aria-selected="true">同传</button>
+    </div>
+    <button id="btn-top-settings" class="icon-btn" type="button" aria-label="设置">
+      <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06-.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.24.6.86 1 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></svg>
+    </button>
+  </div>
+</header>
+
+<main class="wrap">
+  <section id="view-live">
+    <!-- ============ HOME (idle, light) ============ -->
+    <div id="home-panel">
+      <h1 class="hero-title">同声传译</h1>
+      <p class="hero-sub">听清外语，秒出中文</p>
+
+      <div class="hero-card" aria-hidden="true">
+        <p class="hero-faint">Hello &nbsp;·&nbsp; 你好</p>
+        <p class="hero-big">Welcome to live translation</p>
+        <p class="hero-big-zh">欢迎使用同声传译</p>
+        <p class="hero-wave"><span></span><span></span><span></span><span></span><span></span></p>
+      </div>
+
+      <div class="lang-rows">
+        <div class="lang-row">
+          <label for="src-lang">源语言</label>
+          <span class="select-wrap"><select id="src-lang" class="quiet"></select><span class="chev">›</span></span>
+        </div>
+        <div class="lang-row">
+          <label for="tgt-lang">翻译为</label>
+          <span class="select-wrap"><select id="tgt-lang" class="quiet"></select><span class="chev">›</span></span>
+        </div>
+      </div>
+
+      <p style="margin:14px 0 0">
+        <button id="btn-toggle" class="btn primary btn-block btn-huge" type="button">开始翻译</button>
+      </p>
+      <p class="online-pill" id="online-pill">在线模式 · Deepgram + Groq</p>
+      <p class="quota hidden" id="live-quota"></p>
+    </div>
+
+    <!-- ============ LIVE (running, dark blue) ============ -->
+    <div id="live-panel" class="hidden">
+      <div class="live-top">
+        <button id="btn-back" class="circle-btn" type="button" aria-label="返回">←</button>
+        <div class="live-title">
+          <div class="live-title-main">同声传译</div>
+          <div class="live-title-sub" id="live-sub">在线模式 · Deepgram</div>
+        </div>
+        <button id="btn-speaker" class="circle-btn" type="button" aria-label="朗读上一句译文">
+          <svg viewBox="0 0 24 24" width="19" height="19" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M11 5 6 9H2v6h4l5 4V5Z" fill="currentColor" stroke="none"/><path d="M15.5 8.5a5 5 0 0 1 0 7M18.5 5.5a9.4 9.4 0 0 1 0 13"/></svg>
+        </button>
+        <button id="btn-view" class="view-pill" type="button">视图 · 对照</button>
+      </div>
+
+      <div class="live-langs">
+        <span class="lang-pill" id="lang-pill-src">英语</span>
+        <span class="lang-swap">⇄</span>
+        <span class="lang-pill" id="lang-pill-tgt">简体中文</span>
+      </div>
+      <p class="live-status-line"><span id="live-status">正在听…</span></p>
+
+      <div class="interim" id="interim">正在听…</div>
+      <h2 class="live-h2">本节内容 <span id="live-count"></span></h2>
+      <div id="live-list"><p>还没有句子。开始后，老师每说完一句，这里会出现一句原文，下方是翻译。</p></div>
+      <p class="status"><span class="dot" id="live-dot"></span><span>录音进行中</span><span style="margin-left:auto"><button id="btn-clear-live" type="button" class="retry">清空本节</button></span></p>
+
+      <div class="live-controls">
+        <button id="btn-pause" class="pause-pill" type="button">
+          <svg id="pause-icon" viewBox="0 0 24 24" width="16" height="16" fill="currentColor"><rect x="6" y="5" width="4" height="14" rx="1"/><rect x="14" y="5" width="4" height="14" rx="1"/></svg>
+          <span id="live-timer">00:00</span>
+        </button>
+        <button id="btn-stop" class="stop-btn" type="button" aria-label="停止">■</button>
+      </div>
+    </div>
+  </section>
+
+  <section id="view-history" class="hidden">
+    <div class="view-head">
+      <h1>历史</h1>
+      <input id="history-search" type="search" placeholder="搜索历史…" aria-label="搜索历史">
+    </div>
+    <div id="history-list"></div>
+
+    <div id="session-detail" class="hidden">
+      <p><button id="btn-back-history" class="btn ghost small" type="button">← 返回</button></p>
+      <h1 id="session-title" style="font-size:22px"></h1>
+      <p>
+        <button class="btn small" type="button" data-export="bilingual">导出 PDF · 双语对照</button>
+        <button class="btn ghost small" type="button" data-export="src">仅原文</button>
+        <button class="btn ghost small" type="button" data-export="tgt">仅译文</button>
+      </p>
+      <p><button class="btn danger small" type="button" id="btn-delete-session">删除本节</button></p>
+      <div id="session-items"></div>
+    </div>
+  </section>
+
+  <section id="view-settings" class="hidden">
+    <h1>设置</h1>
+    <div class="scroll-area">
+      <div id="quota-section" class="hidden">
+        <h2>用量</h2>
+        <p class="quota" id="quota-dg">Deepgram 剩余 —</p>
+        <p><button id="btn-refresh-quota" class="btn ghost small" type="button">刷新用量</button></p>
+      </div>
+      <label for="dg-key">Deepgram API Key</label>
+      <input id="dg-key" type="password" placeholder="40 位字母数字" autocomplete="off" spellcheck="false">
+      <label for="groq-key">Groq API Key</label>
+      <input id="groq-key" type="password" placeholder="gsk_ 开头" autocomplete="off" spellcheck="false">
+      <label for="groq-model">翻译模型</label>
+      <select id="groq-model">
+        <option value="openai/gpt-oss-20b" selected>openai/gpt-oss-20b</option>
+        <option value="openai/gpt-oss-120b">openai/gpt-oss-120b</option>
+      </select>
+      <p style="margin-top:24px">
+        <button id="btn-save-settings" class="btn" type="button">保存设置</button>
+      </p>
+      <p>
+        <button id="btn-test-groq" class="btn ghost small" type="button">测试 Groq</button>
+        <button id="btn-test-dg" class="btn ghost small" type="button">测试 Deepgram</button>
+        <button id="btn-clear-keys" class="btn danger small" type="button">清除全部 Key</button>
+      </p>
+      <p id="settings-result"></p>
+    </div>
+  </section>
+</main>
+
+<nav class="bottom-nav" aria-label="主导航">
+  <button id="nav-live" class="active" type="button">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M4 5h9M8.5 3v2c0 3.5-2 6.5-4.5 8M5.5 9c1.2 2.3 3 4.3 5 5.5"/><path d="m13 21 4.5-10L22 21M14.8 17h5.4"/></svg>
+    <span>翻译</span>
+  </button>
+  <button id="nav-history" type="button">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3.5 2"/></svg>
+    <span>历史</span>
+  </button>
+  <button id="nav-settings" type="button">
+    <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06-.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.24.6.86 1 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></svg>
+    <span>设置</span>
+  </button>
+</nav>
+
+<script src="config.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

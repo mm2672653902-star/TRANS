@@ -1,0 +1,11 @@
+# TRANS — never commit keys or generated private builds.
+dist/
+dist-private/
+*.key
+*.pem
+config.private.js
+config.local.js
+.env
+.env.*
+node_modules/
+.DS_Store
