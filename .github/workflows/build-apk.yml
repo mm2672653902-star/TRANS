@@ -82,6 +82,23 @@ jobs:
           npx cap add android
           npx cap sync android
 
+      - name: Allow microphone (RECORD_AUDIO)
+        run: |
+          python3 - <<'PY'
+          import pathlib
+          p = pathlib.Path('android/app/src/main/AndroidManifest.xml')
+          t = p.read_text()
+          perm = '    <uses-permission android:name="android.permission.RECORD_AUDIO" />'
+          if 'RECORD_AUDIO' not in t:
+              anchor = '    <uses-permission android:name="android.permission.INTERNET" />'
+              if anchor in t:
+                  t = t.replace(anchor, anchor + chr(10) + perm, 1)
+              else:
+                  t = t.replace('<application', perm + chr(10) + '    <application', 1)
+              p.write_text(t)
+          print('RECORD_AUDIO' in p.read_text())
+          PY
+
       - name: Build debug APK
         run: |
           cd android
@@ -99,3 +116,4 @@ jobs:
           NOTES="Clean public build of TRANS $TAG. No API keys are included — enter your own Deepgram + Groq keys in Settings after installing. Debug APK: install by allowing installs from unknown sources. Live use needs a VPN in mainland China; see README."
           gh release create "$TAG" --title "TRANS $TAG (public)" --notes "$NOTES" "TRANS-public-v1.0.0.apk" \
             || gh release upload "$TAG" --clobber "TRANS-public-v1.0.0.apk"
+
