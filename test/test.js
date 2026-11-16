@@ -155,9 +155,14 @@ check('locked keys: public unlocked, private script flips the flag', () => {
   const js = fs.readFileSync(path.join(__dirname, '..', 'app.js'), 'utf8');
   assert.ok(js.includes('lockKeySettings'), 'app must remove key fields when lockedKeys is on');
   assert.ok(js.includes("kf.remove()") && js.includes("sb.remove()") && js.includes("cb.remove()"), 'lock must remove key fields, Save and Clear');
-  const sh = fs.readFileSync(path.join(__dirname, '..', 'scripts', 'build-private.sh'), 'utf8');
-  assert.ok(sh.includes("lockedKeys: false,/  lockedKeys: true,/"), 'build-private.sh must flip lockedKeys to true');
-  assert.ok(!sh.includes('enableBalance'), 'build-private.sh must not reference the removed balance flag');
+  const shPath = path.join(__dirname, '..', 'scripts', 'build-private.sh');
+  // build-private.sh exists only in the private repo — it names Secrets env
+  // vars, so it must stay out of the public repo. Skip its checks there.
+  if (fs.existsSync(shPath)) {
+    const sh = fs.readFileSync(shPath, 'utf8');
+    assert.ok(sh.includes("lockedKeys: false,/  lockedKeys: true,/"), 'build-private.sh must flip lockedKeys to true');
+    assert.ok(!sh.includes('enableBalance'), 'build-private.sh must not reference the removed balance flag');
+  }
   const html = fs.readFileSync(path.join(__dirname, '..', 'index.html'), 'utf8');
   assert.ok(html.includes('id="key-fields"'), 'key fields must be grouped for removal');
   assert.ok(html.includes('btn-test-groq') && html.includes('btn-test-dg'), 'both test buttons must stay in Settings');
