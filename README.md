@@ -1,5 +1,13 @@
 # TRANS — 实时同传
 
+[![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
+[![Capacitor](https://img.shields.io/badge/Capacitor-8-119EFF)](https://capacitorjs.com/)
+[![JavaScript](https://img.shields.io/badge/JavaScript-ES2020-F7DF1E)](https://developer.mozilla.org/en-US/docs/Web/JavaScript)
+[![Deepgram](https://img.shields.io/badge/Deepgram-Nova--3-13EF93)](https://www.deepgram.com/)
+[![Groq](https://img.shields.io/badge/Groq-gpt--oss--20b-F55036)](https://groq.com/)
+[![Tests](https://github.com/mm2672653902-star/TRANS/actions/workflows/build-apk.yml/badge.svg)](https://github.com/mm2672653902-star/TRANS/actions/workflows/build-apk.yml)
+[![Release](https://img.shields.io/github/v/release/mm2672653902-star/TRANS)](https://github.com/mm2672653902-star/TRANS/releases)
+
 > 本文档为双语：中文在前，英文在后。
 > This document is bilingual: Chinese first, English below.
 
