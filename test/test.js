@@ -57,8 +57,8 @@ check('network errors show the VPN hint', () => {
 
 // 5. Money + Deepgram balance text: never invent a number
 check('dgBalanceText', () => {
-  assert.strictEqual(app.formatMoney(200), '$200.00');
-  assert.strictEqual(app.dgBalanceText({ state: 'ok', amount: 200 }), 'Deepgram 剩余 $200.00');
+  assert.strictEqual(app.formatMoney(12.5), '$12.50');
+  assert.strictEqual(app.dgBalanceText({ state: 'ok', amount: 12.5 }), 'Deepgram 剩余 $12.50');
   assert.strictEqual(app.dgBalanceText({ state: 'missing' }), 'Deepgram 剩余 —（未填写 Key）');
   assert.strictEqual(app.dgBalanceText({ state: 'invalid' }), 'Deepgram 剩余 —（Key 无效）');
   assert.ok(app.dgBalanceText({ state: 'cors' }).includes('无法读取'));
@@ -70,9 +70,9 @@ check('buildPrintHTML modes', () => {
   const s = { startedAt: Date.now(), srcLang: 'en', tgtLang: 'zh-CN', items: [{ src: 'Hello world.', tgt: '你好，世界。' }, { src: 'Second <b>line</b>.', tgt: '第二行。' }] };
   const bi = app.buildPrintHTML(s, 'bilingual');
   assert.ok(bi.includes('你好，世界。') && bi.includes('Hello world.'));
-  // Bilingual PDF order: translation (Chinese) first, large; original below, smaller.
-  assert.ok(bi.indexOf('你好，世界。') < bi.indexOf('Hello world.'), 'bilingual PDF must show translation before original');
-  assert.ok(bi.includes('pt big') && bi.includes('ps small'), 'bilingual PDF must use big-translation / small-original classes');
+  // Bilingual PDF order: original first on its own line, translation below,
+  // alternating pair by pair (original, translation, original, translation).
+  assert.ok(bi.indexOf('Hello world.') < bi.indexOf('你好，世界。'), 'bilingual PDF must show original before translation');
   assert.ok(!bi.includes('<b>line</b>'), 'must escape user text');
   assert.ok(bi.includes('Noto Sans SC') && bi.includes('@page'));
   const src = app.buildPrintHTML(s, 'src');
@@ -84,7 +84,7 @@ check('buildPrintHTML modes', () => {
 // 7. No hardcoded keys anywhere in the shipped source (placeholder text only)
 check('no keys in source', () => {
   const fs = require('fs'), path = require('path');
-  const files = ['app.js', 'index.html', 'styles.css', 'config.js', 'README.md', 'PRIVATE-BUILD.md', 'capacitor.config.json', 'manifest.webmanifest', 'scripts/build-private.sh'];
+  const files = ['app.js', 'index.html', 'styles.css', 'config.js', 'README.md', 'capacitor.config.json', 'manifest.webmanifest'];
   for (const f of files) {
     const t = fs.readFileSync(path.join(__dirname, '..', f), 'utf8');
     assert.ok(!/gsk_[A-Za-z0-9]{10,}/.test(t), f + ' contains a Groq-looking key');

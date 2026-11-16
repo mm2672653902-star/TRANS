@@ -21,12 +21,12 @@ function modeParams() {
     : { utteranceEndMs: 1000, endpointingMs: 300 };
 }
 
-/* BUILD FLAG — balance feature split (see README.md / PRIVATE-BUILD.md):
- * PUBLIC build:  ENABLE_BALANCE = false (default in config.js). No balance display,
- *   no quota line, no balances API call, no refresh button. Clean and minimal.
- * PRIVATE build: ENABLE_BALANCE = true (set at build time only, never committed
- *   as a key — the flag itself is not a secret). Shows the Deepgram dollar balance
- *   in Settings + a tiny hint on Live, with a refresh button.
+/* BUILD FLAG — optional balance display (see config.js):
+ * enableBalance: false (default) → no balance display, no quota line,
+ *   no balances API call, no refresh button.
+ * enableBalance: true  → the app shows the Deepgram dollar balance in
+ *   Settings, with a refresh button. Set at build time only, never
+ *   committed as a key — the flag itself is not a secret.
  * The flag is read from window.TRANS_CONFIG (config.js, loaded before this file).
  * When false, fetchDeepgramBalance is never called and the quota UI is removed. */
 var ENABLE_BALANCE = (typeof window !== 'undefined' && window.TRANS_CONFIG &&
@@ -130,7 +130,7 @@ function buildPrintHTML(session, mode) {
     var n = String(i + 1).padStart(2, '0');
     if (mode === 'src') return '<div class="pi"><div class="pn">' + n + '</div><p class="ps">' + esc(it.src) + '</p></div>';
     if (mode === 'tgt') return '<div class="pi"><div class="pn">' + n + '</div><p class="pt">' + esc(it.tgt || '') + '</p></div>';
-    return '<div class="pi"><div class="pn">' + n + '</div><p class="pt big">' + esc(it.tgt || '') + '</p><p class="ps small">' + esc(it.src) + '</p></div>';
+    return '<div class="pi"><div class="pn">' + n + '</div><p class="ps">' + esc(it.src) + '</p><p class="pt">' + esc(it.tgt || '') + '</p></div>';
   }).join('');
   return '<!doctype html><html lang="zh-CN"><head><meta charset="utf-8"><title>TRANS — ' + esc(title) + '</title>' +
     '<style>@page{size:A4;margin:22mm 20mm}body{font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Noto Sans SC",sans-serif;color:#141414;line-height:1.65;margin:0}' +
@@ -140,7 +140,6 @@ function buildPrintHTML(session, mode) {
     '.pi{padding:20px 0;border-bottom:1px solid #e3ded4;break-inside:avoid}' +
     '.pn{font-size:11px;letter-spacing:.16em;color:#b8b2a6}' +
     '.ps{font-size:15px;font-weight:600;margin:8px 0 4px}.pt{font-size:15px;color:#4a463f;margin:4px 0}' +
-    '.pt.big{font-size:19px;font-weight:700;color:#141414}.ps.small{font-size:14px;font-weight:400;color:#8a857c}' +
     '.foot{color:#b8b2a6;font-size:11px;margin-top:22px}</style></head><body>' +
     '<div class="head"><div class="brand">TRANS<span>.</span></div><h1>' + esc(title) + '</h1>' +
     '<div class="meta">' + esc(date) + ' · ' + esc(srcName) + ' → ' + esc(tgtName) + ' · 共 ' + (session.items || []).length + ' 句</div></div>' +
@@ -204,9 +203,9 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
   }
   function stopTimer() { if (live.timerId) { clearInterval(live.timerId); live.timerId = null; } }
 
-  /* ----- balance display (PRIVATE build only, ENABLE_BALANCE=true) -----
+  /* ----- balance display (only when ENABLE_BALANCE=true) -----
    * One quiet Deepgram dollar-balance line in Settings + a tiny hint on Live.
-   * PUBLIC build (ENABLE_BALANCE=false): this whole block is a no-op — the
+   * Default build (ENABLE_BALANCE=false): this whole block is a no-op — the
    * quota section is removed from the page and no balances API call is made.
    * There is intentionally NO Groq quota display in any build: Groq has no
    * dollar-balance API, so there is nothing real to show. */
@@ -471,10 +470,10 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
     fillSelect($('tgt-lang'), TGT_LANGS, store.getStr(LS.tgt) || 'zh-CN');
   }
   function init() {
-    // Private build only: pre-filled keys come from a build-time generated
-    // config.js (see PRIVATE-BUILD.md). They are seeded into localStorage
-    // once, only if the user has not entered keys themselves. Public config
-    // has empty strings here, so this is a no-op in the public build.
+    // Pre-filled keys: if config.js carries keys (generated at build time),
+    // they are seeded into localStorage once, only if the user has not
+    // entered keys themselves. The default config has empty strings here,
+    // so this is a no-op in the default build.
     if (typeof window !== 'undefined' && window.TRANS_CONFIG) {
       if (window.TRANS_CONFIG.deepgramKey && !store.getStr(LS.dgKey)) store.setStr(LS.dgKey, window.TRANS_CONFIG.deepgramKey);
       if (window.TRANS_CONFIG.groqKey && !store.getStr(LS.groqKey)) store.setStr(LS.groqKey, window.TRANS_CONFIG.groqKey);
@@ -530,8 +529,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
       updateKeyNotice(); live.lastQuotaAt = 0; refreshQuota(true);
       $('settings-result').textContent = ENABLE_BALANCE ? '已保存到这台设备。正在读取用量…' : '已保存到这台设备。';
     };
-    // The refresh button only exists in the private build (ENABLE_BALANCE=true);
-    // in the public build renderQuota() has already removed the quota section.
+    // The refresh button only exists when ENABLE_BALANCE=true;
+    // in the default build renderQuota() has already removed the quota section.
     var rqBtn = $('btn-refresh-quota');
     if (rqBtn) rqBtn.onclick = function () { live.lastQuotaAt = 0; refreshQuota(true); };
     $('btn-clear-keys').onclick = function () {

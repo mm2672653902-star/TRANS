@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Build dist/trans-single.html — a single self-contained TRANS file.
 
-Why: opening index.html alone in the Muse/Android file viewer serves only
+Why: opening index.html alone in a phone file viewer serves only
 that one file. Relative links to styles.css / config.js / app.js (and Google
 Fonts, blocked without a VPN) then fail, so the page renders as unstyled
 default HTML. This build inlines everything, so the file works opened alone.
