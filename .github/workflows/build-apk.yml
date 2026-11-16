@@ -1,0 +1,101 @@
+# TRANS — Build the public Android APK and publish it as a Release asset.
+#
+# Clean public build: NO API keys in the APK, no Deepgram balance feature.
+# The user enters their own Deepgram + Groq keys in Settings after installing.
+#
+# Triggers: pushing this workflow (or any web source file) to main, or manual
+# Run workflow from the Actions tab. The APK is a debug build (no signing
+# needed) — install it by allowing installs from unknown sources.
+#
+# NOTE: this file is public. It must never reference any secret.
+
+name: Build TRANS APK (public)
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/build-apk.yml'
+      - 'index.html'
+      - 'app.js'
+      - 'styles.css'
+      - 'config.js'
+      - 'capacitor.config.json'
+      - 'manifest.webmanifest'
+      - 'assets/**'
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Release tag (e.g. v1.0.0)'
+        required: false
+        default: 'v1.0.0'
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out
+        uses: actions/checkout@v4
+
+      - name: Set up Node 20
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Set up JDK 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Set up Android SDK
+        uses: android-actions/setup-android@v3
+
+      - name: Run unit tests
+        run: node test/test.js
+
+      - name: Install Capacitor
+        run: |
+          npm init -y
+          npm pkg set name="trans"
+          npm install @capacitor/core@^8 @capacitor/cli@^8 @capacitor/android@^8
+
+      - name: Stage web assets
+        run: |
+          mkdir -p web
+          cp index.html app.js styles.css config.js manifest.webmanifest web/
+          cp -r assets web/assets
+          node -e "const fs=require('fs');const c=JSON.parse(fs.readFileSync('capacitor.config.json','utf8'));c.webDir='web';fs.writeFileSync('capacitor.config.json',JSON.stringify(c,null,2));"
+
+      - name: Safety check — no keys in the public bundle
+        run: |
+          if grep -rEq 'gsk_[A-Za-z0-9]{10,}|[0-9a-f]{40}' web/; then
+            echo "::error::Key-shaped string found in the public web bundle — aborting."
+            exit 1
+          fi
+
+      - name: Add Android platform and sync
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Build debug APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --stacktrace
+
+      - name: Rename APK
+        run: cp android/app/build/outputs/apk/debug/app-debug.apk TRANS-public-v1.0.0.apk
+
+      - name: Publish Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          TAG="${{ inputs.tag || 'v1.0.0' }}"
+          NOTES="Clean public build of TRANS $TAG. No API keys are included — enter your own Deepgram + Groq keys in Settings after installing. Debug APK: install by allowing installs from unknown sources. Live use needs a VPN in mainland China; see README."
+          gh release create "$TAG" --title "TRANS $TAG (public)" --notes "$NOTES" "TRANS-public-v1.0.0.apk" \
+            || gh release upload "$TAG" --clobber "TRANS-public-v1.0.0.apk"
