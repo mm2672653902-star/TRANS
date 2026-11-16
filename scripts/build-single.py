@@ -7,7 +7,7 @@ Fonts, blocked without a VPN) then fail, so the page renders as unstyled
 default HTML. This build inlines everything, so the file works opened alone.
 
 Usage: python3 scripts/build-single.py   (run from ~/workspace/live-translator)
-Output: dist/trans-single.html (public defaults: enableBalance=false, no keys)
+Output: dist/trans-single.html (public defaults: no keys)
 No API keys are read or written by this script.
 """
 import base64

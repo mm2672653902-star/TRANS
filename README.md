@@ -34,7 +34,7 @@ TRANS 是一款课堂实时同传工具：听老师讲课，实时看到原文�
 1. 用 https 或 localhost 打开页面（麦克风需要安全上下文）：在文件夹里运行 `python3 -m http.server 8000`，然后打开 `http://localhost:8000`；或者把静态文件托管到任何支持 https 的地方；也可以直接安装 APK。
 2. 选择原语言（老师讲什么语言）和目标语言（你想看什么语言）。默认：英语 → 中文。
 3. 点**开始同传**，允许麦克风，把手机放在老师附近。每说完一句，下面就会出现原文和翻译。直播页顶部显示语言，中间显示句子，底部是暂停（带计时）和停止。
-4. 顶部的**对话 / 同传**切换断句方式：对话切得快，适合一句一句轮着说；同传等得久，适合连续讲课。**视图**可以切换对照（原文 + 译文）或仅译文。喇叭按钮可以用手机自带的语音朗读最后一条译文。暂停会同时停住录音和计时。
+4. **视图**可以切换对照（原文 + 译文）或仅译文。喇叭按钮可以用手机自带的语音朗读最后一条译文。暂停会同时停住录音和计时。
 5. 下课点**停止**，这节课就保存到**历史**里了。
 
 ### 导出 PDF
@@ -116,9 +116,7 @@ Then open TRANS → **Settings** → paste both keys → **Save**. Use the
    teacher. Each finished sentence appears with its translation below.
    The live screen shows the language pair at the top, the sentences
    in the middle, and pause (with a live timer) and stop at the bottom.
-4. The **Dialogue / Lecture** switch at the top changes how sentences
-   are cut: Dialogue cuts sooner (short back-and-forth), Lecture waits
-   longer (continuous lecture). **View** toggles bilingual
+4. **View** toggles bilingual
    (original + translation) or translation only. The speaker button
    reads the last translation aloud with the device's text-to-speech.
    Pause freezes the recorder and the timer.

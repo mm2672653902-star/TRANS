@@ -1,18 +1,22 @@
-/* TRANS build config — defaults (this file IS committed).
- *
- * enableBalance: false  → default. No balance display at all: no Deepgram
- *   balance line, no refresh button, no balances API call. The quota
- *   section stays hidden and fetchDeepgramBalance is never called.
- * enableBalance: true   → optional. Set at build time by a build script
- *   (which writes a generated config into dist/, never into this repo).
- *   Shows the Deepgram dollar balance in Settings.
+/* TRANS build config — this file IS committed.
  *
  * deepgramKey / groqKey: ALWAYS empty here. A build script may write keys
  * into a GENERATED config.js inside dist/ only. Never put a real key in
  * this file, and never commit a generated one.
+ *
+ * lockedKeys: false → default (public). Settings shows the key fields,
+ *   Save and Clear buttons; the user enters their own keys.
+ * lockedKeys: true  → private build only, set at build time by
+ *   scripts/build-private.sh. The key fields, Save and Clear buttons
+ *   are removed from Settings so the baked-in keys cannot be edited
+ *   or deleted by accident. Only the two test buttons remain.
+ *
+ * There is no balance display in the app: Deepgram's balance API
+ * cannot be read from a browser/WebView, so the feature was removed
+ * entirely. Check the balance in the Deepgram console.
  */
 window.TRANS_CONFIG = {
-  enableBalance: false,
+  lockedKeys: false,
   deepgramKey: '',
   groqKey: ''
 };

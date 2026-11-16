@@ -15,10 +15,6 @@
 <body>
 <header class="topbar">
   <div class="wrap topbar-in">
-    <div class="mode-seg" role="tablist" aria-label="模式">
-      <button id="mode-dialogue" class="seg" type="button" role="tab" aria-selected="false">对话</button>
-      <button id="mode-lecture" class="seg active" type="button" role="tab" aria-selected="true">同传</button>
-    </div>
     <button id="btn-top-settings" class="icon-btn" type="button" aria-label="设置">
       <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3.2"/><path d="M19.4 15a1.7 1.7 0 0 0 .34 1.87l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.7 1.7 0 0 0-1.87-.34 1.7 1.7 0 0 0-1 1.55V21a2 2 0 1 1-4 0v-.09a1.7 1.7 0 0 0-1-1.55 1.7 1.7 0 0 0-1.87.34l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06A1.7 1.7 0 0 0 4.6 15a1.7 1.7 0 0 0-1.55-1H3a2 2 0 1 1 0-4h.09A1.7 1.7 0 0 0 4.6 9a1.7 1.7 0 0 0-.34-1.87l-.06-.06a2 2 0 1 1 2.83-2.83l.06-.06A1.7 1.7 0 0 0 9 4.6a1.7 1.7 0 0 0 1-1.55V3a2 2 0 1 1 4 0v.09a1.7 1.7 0 0 0 1 1.55 1.7 1.7 0 0 0 1.87-.34l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.7 1.7 0 0 0 19.4 9c.24.6.86 1 1.55 1H21a2 2 0 1 1 0 4h-.09a1.7 1.7 0 0 0-1.51 1Z"/></svg>
     </button>
@@ -54,7 +50,6 @@
         <button id="btn-toggle" class="btn primary btn-block btn-huge" type="button">开始翻译</button>
       </p>
       <p class="online-pill" id="online-pill">在线模式 · Deepgram + Groq</p>
-      <p class="quota hidden" id="live-quota"></p>
     </div>
 
     <!-- ============ LIVE (running, dark blue) ============ -->
@@ -116,15 +111,12 @@
   <section id="view-settings" class="hidden">
     <h1>设置</h1>
     <div class="scroll-area">
-      <div id="quota-section" class="hidden">
-        <h2>用量</h2>
-        <p class="quota" id="quota-dg">Deepgram 剩余 —</p>
-        <p><button id="btn-refresh-quota" class="btn ghost small" type="button">刷新用量</button></p>
-      </div>
+      <div id="key-fields">
       <label for="dg-key">Deepgram API Key</label>
       <input id="dg-key" type="password" placeholder="40 位字母数字" autocomplete="off" spellcheck="false">
       <label for="groq-key">Groq API Key</label>
       <input id="groq-key" type="password" placeholder="gsk_ 开头" autocomplete="off" spellcheck="false">
+      </div>
       <label for="groq-model">翻译模型</label>
       <select id="groq-model">
         <option value="openai/gpt-oss-20b" selected>openai/gpt-oss-20b</option>

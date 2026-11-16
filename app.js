@@ -7,31 +7,24 @@
 
 var LS = {
   dgKey: 'trans.dgKey', groqKey: 'trans.groqKey', model: 'trans.groqModel',
-  src: 'trans.srcLang', tgt: 'trans.tgtLang', mode: 'trans.mode',
-  history: 'trans.history.v1',
-  dgBalance: 'trans.dgBalance.v1'
+  src: 'trans.srcLang', tgt: 'trans.tgtLang',
+  history: 'trans.history.v1'
 };
 
-/* Mode: 'lecture' （同传，连续讲课）vs 'dialogue' （对话，短句轮换）.
- * Only affects Deepgram endpointing: dialogue cuts sentences sooner. */
-function getMode() { return store.getStr(LS.mode) === 'dialogue' ? 'dialogue' : 'lecture'; }
-function modeParams() {
-  return getMode() === 'dialogue'
-    ? { utteranceEndMs: 600, endpointingMs: 200 }
-    : { utteranceEndMs: 1000, endpointingMs: 300 };
-}
+/* 同传 only: no mode selector, no dialogue mode. Lecture endpointing, fixed. */
+var LECTURE_UTTERANCE_END_MS = 1000;
+var LECTURE_ENDPOINTING_MS = 300;
 
-/* BUILD FLAG — optional balance display (see config.js):
- * enableBalance: false (default) → no balance display, no quota line,
- *   no balances API call, no refresh button.
- * enableBalance: true  → the app shows the Deepgram dollar balance in
- *   Settings, with a refresh button. Set at build time only, never
- *   committed as a key — the flag itself is not a secret.
- * The flag is read from window.TRANS_CONFIG (config.js, loaded before this file).
- * When false, fetchDeepgramBalance is never called and the quota UI is removed. */
-var ENABLE_BALANCE = (typeof window !== 'undefined' && window.TRANS_CONFIG &&
-  typeof window.TRANS_CONFIG.enableBalance !== 'undefined') ?
-  !!window.TRANS_CONFIG.enableBalance : false;
+/* BUILD FLAG — locked keys, private build only (see config.js):
+ * lockedKeys: false (default, public) → Settings shows the key fields,
+ *   Save and Clear buttons; the user enters their own keys.
+ * lockedKeys: true  → keys are baked in at build time; the key fields,
+ *   Save and Clear buttons are removed from Settings so the baked-in
+ *   keys cannot be edited or deleted by accident. Only the two test
+ *   buttons remain. Set at build time only, never committed as a key. */
+var LOCKED_KEYS = (typeof window !== 'undefined' && window.TRANS_CONFIG &&
+  typeof window.TRANS_CONFIG.lockedKeys !== 'undefined') ?
+  !!window.TRANS_CONFIG.lockedKeys : false;
 
 var SRC_LANGS = [
   ['en', 'English'], ['zh', '中文'], ['ja', '日本語'], ['ko', '한국어'],
@@ -45,10 +38,6 @@ var TGT_LANGS = [
 var LANG_NAME = {};
 SRC_LANGS.concat(TGT_LANGS).forEach(function (p) { LANG_NAME[p[0]] = p[1]; });
 
-function formatMoney(n) {
-  if (n === null || n === undefined || isNaN(n)) return null;
-  return '$' + Number(n).toFixed(2);
-}
 function buildDeepgramUrl(opts) {
   var q = new URLSearchParams({
     model: 'nova-3', language: opts.language || 'en',
@@ -78,44 +67,6 @@ var store = {
 };
 function loadHistory() { var h = store.get(LS.history, []); return Array.isArray(h) ? h : []; }
 function saveHistory(h) { store.set(LS.history, h.slice(0, 50)); }
-
-/* ---------- Deepgram balance (REST; see README for the CORS limitation) ---------- */
-async function fetchDeepgramBalance(apiKey) {
-  if (!ENABLE_BALANCE) return { state: 'disabled' };
-  if (!apiKey) return { state: 'missing' };
-  try {
-    var r1 = await fetch('https://api.deepgram.com/v1/projects', { headers: { Authorization: 'Token ' + apiKey } });
-    if (!r1.ok) return { state: r1.status === 401 ? 'invalid' : 'unreadable', status: r1.status };
-    var pj = await r1.json();
-    var project = (pj.projects && pj.projects[0]) || null;
-    if (!project) return { state: 'unreadable' };
-    var r2 = await fetch('https://api.deepgram.com/v1/projects/' + project.project_id + '/balances',
-      { headers: { Authorization: 'Token ' + apiKey } });
-    if (!r2.ok) return { state: r2.status === 401 ? 'invalid' : 'unreadable', status: r2.status };
-    var bj = await r2.json();
-    var usd = (bj.balances || []).filter(function (b) { return b.units === 'usd'; });
-    if (!usd.length) return { state: 'unreadable' };
-    var amount = usd.reduce(function (s, b) { return s + Number(b.amount || 0); }, 0);
-    var out = { state: 'ok', amount: amount, projectName: project.name || '', at: new Date().toISOString() };
-    store.set(LS.dgBalance, out);
-    return out;
-  } catch (e) {
-    // TypeError in a browser almost always means CORS / network: Deepgram's REST API
-    // does not send permissive CORS headers (official SDK: "we do not support custom
-    // CORS origins"). The live WebSocket STT path is unaffected — only this balance
-    // read is blocked. Never invent a number here.
-    return { state: 'cors', message: String((e && e.message) || e) };
-  }
-}
-function dgBalanceText(res) {
-  if (!res) return '未填写 / 无法读取';
-  if (res.state === 'ok') return 'Deepgram 剩余 ' + formatMoney(res.amount);
-  if (res.state === 'missing') return 'Deepgram 剩余 —（未填写 Key）';
-  if (res.state === 'invalid') return 'Deepgram 剩余 —（Key 无效）';
-  if (res.state === 'cors') return 'Deepgram 剩余 —（无法读取：浏览器限制，见设置说明）';
-  if (res.state === 'disabled') return 'Deepgram 剩余 —（公开版无此功能）';
-  return 'Deepgram 剩余 —（无法读取）';
-}
 
 /* ---------- PDF print HTML (the export itself is the browser's Print-to-PDF) ---------- */
 function esc(s) {
@@ -149,15 +100,14 @@ function buildPrintHTML(session, mode) {
 if (typeof module !== 'undefined' && module.exports) {
   module.exports = {
     buildDeepgramUrl: buildDeepgramUrl, splitSentences: splitSentences,
-    formatMoney: formatMoney, dgBalanceText: dgBalanceText,
-    buildPrintHTML: buildPrintHTML, ENABLE_BALANCE: ENABLE_BALANCE
+    buildPrintHTML: buildPrintHTML, LOCKED_KEYS: LOCKED_KEYS
   };
 }
 
 /* ---------- DOM app (browser only) ---------- */
 if (typeof window !== 'undefined' && typeof document !== 'undefined') (function () {
   var $ = function (id) { return document.getElementById(id); };
-  var live = { running: false, paused: false, ws: null, recorder: null, stream: null, session: null, buffer: '', queue: [], translating: false, lastQuotaAt: 0, elapsed: 0, timerId: null, viewMode: 'bilingual' };
+  var live = { running: false, paused: false, active: false, ws: null, recorder: null, stream: null, session: null, buffer: '', queue: [], translating: false, elapsed: 0, timerId: null, viewMode: 'bilingual', lastMsgAt: 0, openTimer: null, watchId: null };
 
   function fillSelect(el, list, val) {
     el.innerHTML = list.map(function (p) { return '<option value="' + p[0] + '"' + (p[0] === val ? ' selected' : '') + '>' + p[1] + '</option>'; }).join('');
@@ -168,7 +118,6 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
       $('nav-' + v).classList.toggle('active', v === view);
     });
     if (view === 'history') renderHistory();
-    if (view === 'settings') refreshQuota(false);
   }
   function keysPresent() { return !!store.getStr(LS.dgKey) && !!store.getStr(LS.groqKey); }
   function updateKeyNotice() { updateOnlinePill(); }
@@ -178,6 +127,12 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
       ? '在线模式 · Deepgram + Groq 已就绪'
       : '在线模式 · 请先在设置里填写 Key';
   }
+  /* Failures that happen before / after the live screen is shown used to
+   * have nowhere visible to go: live-status lives on the live panel, so
+   * a mic denial or a dropped connection failed silently on the home
+   * screen (the user tapped 开始翻译 and nothing happened at all).
+   * The home pill is always visible, so failures are reported there. */
+  function showHomeNote(msg) { var p = $('online-pill'); if (p) p.textContent = msg; }
   function updateLangPills() {
     var s = $('lang-pill-src'), t = $('lang-pill-tgt');
     if (s) s.textContent = LANG_NAME[$('src-lang').value] || $('src-lang').value;
@@ -202,39 +157,6 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
     }, 1000);
   }
   function stopTimer() { if (live.timerId) { clearInterval(live.timerId); live.timerId = null; } }
-
-  /* ----- balance display (only when ENABLE_BALANCE=true) -----
-   * One quiet Deepgram dollar-balance line in Settings + a tiny hint on Live.
-   * Default build (ENABLE_BALANCE=false): this whole block is a no-op — the
-   * quota section is removed from the page and no balances API call is made.
-   * There is intentionally NO Groq quota display in any build: Groq has no
-   * dollar-balance API, so there is nothing real to show. */
-  function renderQuota(dgRes) {
-    var section = $('quota-section'), hint = $('live-quota');
-    if (!ENABLE_BALANCE) {
-      if (section) section.remove();
-      if (hint) hint.remove();
-      return;
-    }
-    if (section) section.classList.remove('hidden');
-    var dg = dgRes || store.get(LS.dgBalance, null);
-    var dgLine = dgBalanceText(dg);
-    if (dg && dg.state === 'ok' && dg.at) dgLine += '（' + new Date(dg.at).toLocaleString('zh-CN', { hour12: false }) + ' 读取）';
-    $('quota-dg').textContent = dgLine;
-    if (hint) {
-      if (dg && dg.state === 'ok') { hint.textContent = 'Deepgram ' + formatMoney(dg.amount); hint.classList.remove('hidden'); }
-      else hint.classList.add('hidden');
-    }
-  }
-  async function refreshQuota(force) {
-    if (!ENABLE_BALANCE) { renderQuota(); return; }
-    var now = Date.now();
-    if (!force && now - live.lastQuotaAt < 60000) { renderQuota(); return; }
-    live.lastQuotaAt = now;
-    $('quota-dg').textContent = 'Deepgram 剩余 读取中…';
-    var res = await fetchDeepgramBalance(store.getStr(LS.dgKey));
-    renderQuota(res);
-  }
 
   /* ----- live: Deepgram WS + Groq translation queue ----- */
   function newSession() {
@@ -328,10 +250,22 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
 
   async function startLive() {
     if (!keysPresent()) { show('settings'); $('settings-result').textContent = '请先填写 Deepgram 和 Groq 两个 Key。'; return; }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      showHomeNote('无法打开麦克风：此设备不支持录音'); return;
+    }
+    var micTimer = null, micP = null;
     try {
-      live.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
-    } catch (e) { $('live-status').textContent = '无法打开麦克风：请允许权限，并用 https / localhost 打开页面。'; return; }
+      micP = navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true } });
+      var micTimeout = new Promise(function (_, rej) { micTimer = setTimeout(function () { rej(new Error('mic timeout')); }, 8000); });
+      live.stream = await Promise.race([micP, micTimeout]);
+      if (micTimer) clearTimeout(micTimer);
+    } catch (e) {
+      if (micTimer) clearTimeout(micTimer);
+      if (micP && micP.then) micP.then(function (s) { try { s.getTracks().forEach(function (t) { t.stop(); }); } catch (ignored) {} }, function () {});
+      showHomeNote('无法打开麦克风：请允许权限后重试'); return;
+    }
     live.session = newSession(); live.buffer = ''; live.queue = [];
+    live.active = true; live.lastMsgAt = Date.now();
     live.paused = false;
     document.body.classList.add('is-live');
     $('home-panel').classList.add('hidden');
@@ -340,24 +274,36 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
     $('live-sub').textContent = '在线模式 · Deepgram';
     updateLangPills(); startTimer();
     renderLive();
-    var mp = modeParams();
-    var url = buildDeepgramUrl({ language: live.session.srcLang, utteranceEndMs: mp.utteranceEndMs, endpointingMs: mp.endpointingMs });
+    var url = buildDeepgramUrl({ language: live.session.srcLang, utteranceEndMs: LECTURE_UTTERANCE_END_MS, endpointingMs: LECTURE_ENDPOINTING_MS });
     var ws = new WebSocket(url, ['token', store.getStr(LS.dgKey)]);
     live.ws = ws;
+    live.openTimer = setTimeout(function () {
+      if (live.active && !live.running) stopLive('Deepgram 连接超时：网络不通？试试开梯子再重试');
+    }, 10000);
     ws.onopen = function () {
+      if (live.openTimer) { clearTimeout(live.openTimer); live.openTimer = null; }
       var mime = ['audio/webm;codecs=opus', 'audio/webm', 'audio/mp4', ''].find(function (m) { try { return !m || MediaRecorder.isTypeSupported(m); } catch (e) { return false; } });
       try {
         live.recorder = new MediaRecorder(live.stream, mime ? { mimeType: mime } : undefined);
         live.recorder.ondataavailable = function (ev) { if (ev.data && ev.data.size && ws.readyState === 1) ws.send(ev.data); };
+        live.recorder.onerror = function () { $('live-status').textContent = '录音出错：请检查麦克风'; };
         live.recorder.start(250);
       } catch (e) { $('live-status').textContent = '录音启动失败：' + e.message; }
       live.running = true;
+      live.lastMsgAt = Date.now();
+      if (live.watchId) clearInterval(live.watchId);
+      live.watchId = setInterval(function () {
+        if (live.running && !live.paused && live.session && !live.session.items.length &&
+          Date.now() - live.lastMsgAt > 20000) {
+          $('live-status').textContent = '已连接，但还没收到声音：请检查麦克风';
+        }
+      }, 5000);
       $('btn-toggle').textContent = '停止翻译'; $('btn-toggle').classList.add('live');
       $('live-dot').classList.add('live'); $('live-status').textContent = '正在听…';
-      renderQuota();
     };
     ws.onmessage = function (ev) {
       var msg; try { msg = JSON.parse(ev.data); } catch (e) { return; }
+      live.lastMsgAt = Date.now();
       if (msg.type === 'UtteranceEnd') { if (live.buffer.trim()) { addSentence(live.buffer); live.buffer = ''; } return; }
       var alt = msg.channel && msg.channel.alternatives && msg.channel.alternatives[0];
       if (!alt || !alt.transcript) return;
@@ -372,10 +318,12 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
       }
     };
     ws.onerror = function () { $('live-status').textContent = 'Deepgram 连接出错：请检查 Key。网络不通？试试开梯子再重试'; };
-    ws.onclose = function () { if (live.running) stopLive('连接已断开。网络不通？试试开梯子再重试'); };
+    ws.onclose = function () { if (live.active) stopLive('连接已断开。网络不通？试试开梯子再重试'); };
   }
   function stopLive(note) {
-    live.running = false; live.paused = false; stopTimer();
+    live.active = false; live.running = false; live.paused = false; stopTimer();
+    if (live.openTimer) { clearTimeout(live.openTimer); live.openTimer = null; }
+    if (live.watchId) { clearInterval(live.watchId); live.watchId = null; }
     try { if (live.recorder && live.recorder.state !== 'inactive') live.recorder.stop(); } catch (e) {}
     try { if (live.ws) live.ws.close(); } catch (e) {}
     try { if (live.stream) live.stream.getTracks().forEach(function (t) { t.stop(); }); } catch (e) {}
@@ -387,7 +335,8 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
     $('home-panel').classList.remove('hidden');
     $('btn-toggle').textContent = '开始翻译'; $('btn-toggle').classList.remove('live');
     $('live-dot').classList.remove('live'); $('live-status').textContent = note || '已停止，本节已保存到历史。';
-    updateTimerUI(); renderQuota();
+    if (note) showHomeNote(note);
+    updateTimerUI();
   }
   function togglePause() {
     if (!live.running || !live.recorder) return;
@@ -478,18 +427,18 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
       if (window.TRANS_CONFIG.deepgramKey && !store.getStr(LS.dgKey)) store.setStr(LS.dgKey, window.TRANS_CONFIG.deepgramKey);
       if (window.TRANS_CONFIG.groqKey && !store.getStr(LS.groqKey)) store.setStr(LS.groqKey, window.TRANS_CONFIG.groqKey);
     }
-    loadSettings(); updateKeyNotice(); updateLangPills(); renderQuota();
-    // Mode segmented control （对话 / 同传）: only changes Deepgram endpointing.
-    var setMode = function (m) {
-      store.setStr(LS.mode, m);
-      $('mode-dialogue').classList.toggle('active', m === 'dialogue');
-      $('mode-lecture').classList.toggle('active', m === 'lecture');
-      $('mode-dialogue').setAttribute('aria-selected', m === 'dialogue' ? 'true' : 'false');
-      $('mode-lecture').setAttribute('aria-selected', m === 'lecture' ? 'true' : 'false');
-    };
-    setMode(getMode());
-    $('mode-dialogue').onclick = function () { setMode('dialogue'); };
-    $('mode-lecture').onclick = function () { setMode('lecture'); };
+    loadSettings(); updateKeyNotice(); updateLangPills();
+    if (LOCKED_KEYS) lockKeySettings();
+    // Private (locked-keys) build: the baked-in keys must not be editable
+    // or deletable in the app. Remove the key fields, Save and Clear
+    // buttons; only the two test buttons remain in Settings.
+    function lockKeySettings() {
+      var kf = $('key-fields'); if (kf) kf.remove();
+      var sb = $('btn-save-settings'); if (sb) sb.remove();
+      var cb = $('btn-clear-keys'); if (cb) cb.remove();
+    }
+    // Model select saves immediately, so it still works when Save is gone.
+    $('groq-model').onchange = function () { store.setStr(LS.model, $('groq-model').value); };
     $('btn-top-settings').onclick = function () { show('settings'); };
     $('nav-live').onclick = function () { show('live'); };
     $('nav-history').onclick = function () { show('history'); };
@@ -522,19 +471,15 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
       openSessionId = null; $('session-detail').classList.add('hidden');
       $('view-history').classList.remove('detail-open'); renderHistory();
     };
-    $('btn-save-settings').onclick = function () {
+    var saveBtn = $('btn-save-settings'); if (saveBtn) saveBtn.onclick = function () {
       store.setStr(LS.dgKey, $('dg-key').value.trim());
       store.setStr(LS.groqKey, $('groq-key').value.trim());
       store.setStr(LS.model, $('groq-model').value);
-      updateKeyNotice(); live.lastQuotaAt = 0; refreshQuota(true);
-      $('settings-result').textContent = ENABLE_BALANCE ? '已保存到这台设备。正在读取用量…' : '已保存到这台设备。';
+      updateKeyNotice();
+      $('settings-result').textContent = '已保存到这台设备。';
     };
-    // The refresh button only exists when ENABLE_BALANCE=true;
-    // in the default build renderQuota() has already removed the quota section.
-    var rqBtn = $('btn-refresh-quota');
-    if (rqBtn) rqBtn.onclick = function () { live.lastQuotaAt = 0; refreshQuota(true); };
-    $('btn-clear-keys').onclick = function () {
-      store.remove(LS.dgKey); store.remove(LS.groqKey); loadSettings(); updateKeyNotice(); renderQuota();
+    var clearBtn = $('btn-clear-keys'); if (clearBtn) clearBtn.onclick = function () {
+      store.remove(LS.dgKey); store.remove(LS.groqKey); loadSettings(); updateKeyNotice();
       $('settings-result').textContent = 'Key 已清除。';
     };
     $('btn-test-groq').onclick = async function () {
@@ -554,7 +499,7 @@ if (typeof window !== 'undefined' && typeof document !== 'undefined') (function 
         ws.onopen = function () { finish(true); }; ws.onerror = function () { finish(false); };
         setTimeout(function () { finish(false); }, 8000);
       });
-      $('settings-result').textContent = ok ? 'Deepgram 可用（WebSocket 已连通）。' : 'Deepgram 未连通：请检查 Key。网络不通？试试开梯子再重试。注意：余额读取可能仍因浏览器限制失败，见用量说明。';
+      $('settings-result').textContent = ok ? 'Deepgram 可用（WebSocket 已连通）。' : 'Deepgram 未连通：请检查 Key。网络不通？试试开梯子再重试。';
     };
   }
   if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', init); else init();
